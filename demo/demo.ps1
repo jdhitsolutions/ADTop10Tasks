@@ -11,22 +11,20 @@ Get-Command -module ActiveDirectory
 
 #region FSMO
 Function Get-FSMOHolders {
-[cmdletbinding()]
-Param([string]$Domain=(Get-ADDomain).DistinguishedName)
+   [cmdletbinding()]
+   Param([string]$Domain = (Get-ADDomain).DistinguishedName)
 
-$ADDomain = Get-ADDomain -Identity $Domain 
-$ADForest = $ADDomain | Get-ADForest
-[PSCustomObject]@{
-Domain=$ADDomain.Name
-Forest=$ADForest.Name
-PDCEmulator=$ADDomain.PDCEmulator
-RIDMaster=$ADDomain.RIDMaster
-InfrastructureMaster=$ADdomain.InfrastructureMaster
-SchemaMaster=$ADForest.SchemaMaster
-DomainNamingMaster=$ADForest.DomainNamingMaster
-}
-
-
+   $ADDomain = Get-ADDomain -Identity $Domain
+   $ADForest = $ADDomain | Get-ADForest
+   [PSCustomObject]@{
+      Domain               = $ADDomain.Name
+      Forest               = $ADForest.Name
+      PDCEmulator          = $ADDomain.PDCEmulator
+      RIDMaster            = $ADDomain.RIDMaster
+      InfrastructureMaster = $ADdomain.InfrastructureMaster
+      SchemaMaster         = $ADForest.SchemaMaster
+      DomainNamingMaster   = $ADForest.DomainNamingMaster
+   }
 } #end Get-FSMOHolders
 
 #endregion
@@ -34,37 +32,37 @@ DomainNamingMaster=$ADForest.DomainNamingMaster
 #region Empty OU
 
 #use the AD PSDrive
- dir 'AD:\DC=Company,DC=Pri'
- 
- Get-ADOrganizationalUnit -Filter * | 
- ForEach-Object { 
- $ouPath = Join-Path -path "AD:\" -ChildPath $_.distinguishedName
- $test = Get-Childitem -path $ouPath -Recurse | Where-Object ObjectClass -ne 'organizationalunit'
- if (-Not $Test) {
-    $_.distinguishedname
- }
- }
+Get-ChildItem 'AD:\DC=Company,DC=Pri'
+
+Get-ADOrganizationalUnit -Filter * |
+ForEach-Object {
+   $ouPath = Join-Path -path "AD:\" -ChildPath $_.distinguishedName
+   $test = Get-ChildItem -path $ouPath -Recurse |
+   Where-Object ObjectClass -ne 'organizationalunit'
+   if (-Not $Test) {
+      $_.distinguishedname
+   }
+}
 
 #endregion
 
 #region Create new users
 
-
 #parameters to splat to New-ADUser
-$params=@{
-Name="Thomas Anderson"
-DisplayName="Thomas Anderson"
-SamAccountName="tanderson"
-UserPrincipalName="tanderson@company.com"
-PassThru=$True
-GivenName="Tom"
-Surname="Anderson"
-Description="the one"
-Title="Senior Web Developer"
-Department="IT"
-AccountPassword = (ConvertTo-SecureString -String "P@ssw0rd" -Force -AsPlainText)
-Path= "OU=IT,DC=Company,DC=Pri"
-Enabled=$True
+$params = @{
+   Name              = "Thomas Anderson"
+   DisplayName       = "Thomas Anderson"
+   SamAccountName    = "tanderson"
+   UserPrincipalName = "tanderson@company.com"
+   PassThru          = $True
+   GivenName         = "Tom"
+   Surname           = "Anderson"
+   Description       = "the one"
+   Title             = "Senior Web Developer"
+   Department        = "IT"
+   AccountPassword   = (ConvertTo-SecureString -String "P@ssw0rd" -Force -AsPlainText)
+   Path              = "OU=IT,DC=Company,DC=Pri"
+   Enabled           = $True
 }
 
 #splat the hashtable
@@ -74,39 +72,41 @@ New-ADUser @params
 
 #import
 
-Import-csv .\100NewUsers.csv | Select -first 1
+Import-Csv .\100NewUsers.csv | Select-Object -first 1
 $secure = ConvertTo-SecureString -String "P@ssw0rdXyZ" -AsPlainText -Force
 
 #I'm not taking error handling for duplicate names into account
 $newParams = @{
-changePasswordAtLogon = $True 
-path = "OU=Imported,OU=Employees,DC=company,DC=pri" 
-accountpassword = $secure 
-Enabled = $True 
-PassThru = $True
+   changePasswordAtLogon = $True
+   path                  = "OU=Imported,OU=Employees,DC=company,DC=pri"
+   accountpassword       = $secure
+   Enabled               = $True
+   PassThru              = $True
 }
-Import-CSV .\100NewUsers.csv | New-ADUser @newParams
+Import-Csv .\100NewUsers.csv | New-ADUser @newParams
 
-# Get-aduser -Filter * -SearchBase $newParams.path | Remove-ADUser -confirm:$false -WhatIf
+# Get-Aduser -Filter * -SearchBase $newParams.path | Remove-ADUser -confirm:$false
 
 #endregion
 
 #region Find inactive user accounts
 
-#this demo is only getting the first 10
+#this demo is only getting the first 10 accounts
 $paramHash = @{
- AccountInactive = $True
- Timespan = (New-Timespan -Days 120)
- SearchBase = "OU=Employees,DC=company,DC=pri"
- UsersOnly = $True
- ResultSetSize = "10"
+   AccountInactive = $True
+   Timespan        = (New-TimeSpan -Days 120)
+   SearchBase      = "OU=Employees,DC=company,DC=pri"
+   UsersOnly       = $True
+   ResultSetSize   = "10"
 }
 
-Search-ADAccount @paramHash | Select-Object Name,LastLogonDate,SamAccountName,DistinguishedName
+Search-ADAccount @paramHash | Select-Object Name, LastLogonDate, SamAccountName, DistinguishedName
 
 #endregion
 
 #region Find inactive computer accounts
+
+#definitely look at help for this command
 
 Search-ADAccount -ComputersOnly -AccountInactive
 
@@ -116,38 +116,38 @@ Search-ADAccount -ComputersOnly -AccountInactive
 
 #can't use -match in the filter
 $paramHash = @{
- filter = "Members -notlike '*'"
- Properties = "Members","Created","Modified","ManagedBy"
- SearchBase = "DC=company,DC=pri"
+   filter     = "Members -notlike '*'"
+   Properties = "Members", "Created", "Modified", "ManagedBy"
+   SearchBase = "DC=company,DC=pri"
 }
 
 Get-ADGroup @paramHash |
-Select-Object Name,Description,
-@{Name="Location";Expression={$_.DistinguishedName.split(",",2)[1]}},
-Group*,Modified,ManagedBy |
+Select-Object Name, Description,
+@{Name = "Location"; Expression = {$_.DistinguishedName.split(",", 2)[1]}},
+Group*, Modified, ManagedBy |
 Sort-Object Location |
-Format-Table -GroupBy Location -Property Name,Description,Group*,Modified,ManagedBy
+Format-Table -GroupBy Location -Property Name, Description, Group*, Modified, ManagedBy
 
 #filter out User and Builtin
 #can't seem to filter on DistinguishedName
 $paramHash = @{
- filter = "Members -notlike '*'"
- Properties = "Members","Modified","ManagedBy"
- SearchBase = "DC=company,DC=pri"
+   filter     = "Members -notlike '*'"
+   Properties = "Members", "Modified", "ManagedBy"
+   SearchBase = "DC=company,DC=pri"
 }
 
-Get-ADGroup @paramhash  | Where-object {$_.DistinguishedName -notmatch "CN=(Users)|(BuiltIn)"} |
-Select-object DistinguishedName,Name,Modified,ManagedBy
+Get-ADGroup @paramhash | Where-Object {$_.DistinguishedName -notmatch "CN=(Users)|(BuiltIn)"} |
+Select-Object DistinguishedName, Name, Modified, ManagedBy
 
-#kinda the opposite
-#getting groups members report
-#these are groups with any type of member
-$data = Get-ADGroup -filter * -Properties Members,Created,Modified |
-Select Name,Description,
-@{Name="Location";Expression={$_.DistinguishedName.split(",",2)[1]}},
-Group*,Created,Modified,
-@{Name="MemberCount";Expression={$_.Members.count}} |
-Sort MemberCount -Descending
+<#
+This is kinda the opposite. These are groups with any type of member
+#>
+$data = Get-ADGroup -filter * -Properties Members, Created, Modified |
+Select-Object Name, Description,
+@{Name = "Location"; Expression = {$_.DistinguishedName.split(",", 2)[1]}},
+Group*, Created, Modified,
+@{Name = "MemberCount"; Expression = {$_.Members.count}} |
+Sort-Object MemberCount -Descending
 
 $data | Group-Object MemberCount
 
@@ -159,11 +159,11 @@ $data | Group-Object MemberCount
 psedit .\get-adnested.ps1
 
 $group = "Master Dev"
-Get-ADNested $group | Select-Object Name,Level,ParentGroup,@{Name="Top";Expression={$group}}
+Get-ADNested $group | Select-Object Name, Level, ParentGroup, @{Name = "Top"; Expression = {$group}}
 
 #list allmembers
-Get-ADGroupMember -Identity $group -Recursive | 
-Select-Object Distinguishedname,samAccountName
+Get-ADGroupMember -Identity $group -Recursive |
+Select-Object Distinguishedname, samAccountName
 
 #endregion
 
@@ -178,41 +178,33 @@ psedit .\Get-ADMemberOf.ps1
 
 . .\Get-ADMemberOf.ps1
 
-$roy | Get-ADMemberOf -verbose | Select-Object Name,DistinguishedName -Unique
+$roy | Get-ADMemberOf -verbose | Select-Object Name, DistinguishedName -Unique
 
 #endregion
 
 #region Password Age Report
 
-$ReportTitle = "Password Age Report"
-#this must be left justified        
-$head = @"
-<Title>$ReportTitle</Title>
-<style>
-body { background-color:#FFFFFF;
-       font-family:Tahoma;
-       font-size:12pt; }
-td, th { border:1px solid black; 
-         border-collapse:collapse; }
-th { color:white;
-     background-color:black; }
-table, tr, td, th { padding: 2px; margin: 0px }
-tr:nth-child(odd) {background-color: lightgray}
-table { width:95%;margin-left:5px; margin-bottom:20px;}
-</style>
-<br>
-<H1>$ReportTitle</H1>
-"@
+$params = @{
+   filter     = "Enabled -eq 'true'"
+   Properties = "PasswordLastSet", "PasswordNeverExpires"
+}
 
-Get-Aduser @paramHash | Where {-Not $_.PasswordExpired} |
-Select DistinguishedName,Name,PasswordLastSet,
-@{Name="PasswordAge";Expression={(Get-date) - $_.PasswordLastSet}},
-@{Name="PassExpires";Expression={$_.passwordLastSet.addDays($maxDays)}} |
-Sort PasswordAge -Descending |
-ConvertTo-Html -Title $ReportTitle -Head $head |
-Out-File c:\work\PasswordAgeReport.htm -Encoding ascii
+#get maximum password age.
+#This doesn't take fine tuned password policies into account
+$maxDays = (Get-ADDefaultDomainPasswordPolicy).MaxPasswordAge.Days
 
-invoke-item c:\work\passwordagereport.htm
+#skip user accounts under CN=Users
+Get-ADUser @params |
+Where-Object {-Not $_.PasswordExpired -and $_.DistinguishedName -notmatch "CN\=Users"} |
+Select-Object DistinguishedName, Name, PasswordLastSet, PasswordNeverExpires,
+@{Name = "PasswordAge"; Expression = {(Get-Date) - $_.PasswordLastSet}},
+@{Name = "PassExpires"; Expression = {$_.passwordLastSet.addDays($maxDays)}} |
+Sort-Object PasswordAge -Descending
+
+#create an html report
+psedit .\PasswordReport.ps1
+
+Invoke-Item .\PasswordReport.htm
 
 #endregion
 
@@ -222,62 +214,37 @@ $dcs = (Get-ADDomain).ReplicaDirectoryServers
 
 #services
 #my domain controllers also run DNS
-get-service adws,dns -ComputerName $dcs | Select Machinename,Name,Status
+# the legacy way
+# Get-Service adws,dns,ntds,kdc -ComputerName $dcs | Select-Object Machinename,Name,Status
+
+Get-CimInstance -ClassName Win32_Service -filter "name='adws' or name='dns' or name='ntds' or name='kdc'" -ComputerName $dcs |
+Select-Object SystemName, Name, State
 
 #eventlog
-get-eventlog -list -computername chi-dc04
+Get-EventLog -list -computername DOM1
 
 #remoting speeds this up
 $data = Invoke-Command {
-Get-eventlog -LogName 'Active Directory Web Services' -EntryType Error,Warning -Newest 10 
+   #ignore errors if nothing is found
+   Get-EventLog -LogName 'Active Directory Web Services' -EntryType Error, Warning -Newest 10 -ErrorAction SilentlyContinue
 } -computer $dcs
 
-$data | sort PSComputername,TimeGenerated -Descending |
-Format-Table -GroupBy PSComputername -Property TimeGenerated,EventID,Message -wrap
+<# demo alternative
 
-#or create an HTML report
-$ReportTitle = "ADWS Log Report"
+$data = Invoke-Command {
+Get-EventLog -LogName 'Active Directory Web Services' -Newest 10
+} -computer $dcs
 
-#the here string must be left justified        
-$head = @"
-<Title>$ReportTitle</Title>
-<style>
-body { background-color:#FFFFFF;
-       font-family:Tahoma;
-       font-size:12pt; }
-td, th { border:1px solid black; 
-         border-collapse:collapse; }
-th { color:white;
-     background-color:black; }
-table, tr, td, th { padding: 2px; margin: 0px }
-tr:nth-child(odd) {background-color: lightgray}
-table { width:95%;margin-left:5px; margin-bottom:20px;}
-</style>
-<br>
-<H1>$ReportTitle</H1>
-"@
+#>
 
-#create fragments for each domain controller
-$grouped = $data | Group PSComputername -AsHashTable
+#formatted in the console
+$data | Sort-Object PSComputername, TimeGenerated -Descending |
+Format-Table -GroupBy PSComputername -Property TimeGenerated, EventID, Message -wrap
 
-#initialize an array to hold html fragments
-$fragments=@()
+#how about a Pester-base health test?
 
-$grouped.GetEnumerator() | Foreach {
-$DC = $_.name.ToUpper()
-$fragments+= $_.value | Select TimeGenerated,EventID,EntryType,Message | 
-ConvertTo-Html -Fragment -PreContent "<H3>$DC</H3>"
-}
+psedit .\ADHealth.tests.ps1
 
-ConvertTo-Html -Title $ReportTitle -Head $head -Body $fragments -PostContent "<h6><I>$(Get-Date)</I></h6>" |
-Out-File c:\work\adlog.htm -Encoding ascii
-
-invoke-item c:\work\adlog.htm
-
-#checking NTDS
-
-invoke-command {dir c:\windows\ntds } -computername $dcs |
-Select PSComputername,LastWriteTime,Length,Name |
-Out-GridView -Title "NTDS Files"
+Invoke-Pester .\ADHealth.tests.ps1
 
 #endregion
