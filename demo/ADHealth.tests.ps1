@@ -20,7 +20,7 @@ $DomainControllers = $myDomain.ReplicaDirectoryServers
 
 $GlobalCatalogServers = $myForest.GlobalCatalogs
 
-Write-Host "[$(Get-Date)] Testing Domain $($myDomain.Name)" -ForegroundColor Cyan
+Write-Host "[$(Get-Date)] Testing $($myDomain.DistinguishedName)" -ForegroundColor DarkGreen -BackgroundColor Gray
 
 Describe Active-Directory {
 
@@ -78,7 +78,6 @@ Foreach ($DC in $DomainControllers) {
             if ($GlobalCatalogServers -contains $DC) {
                 It "Should be a global catalog server" {
                     (Test-NetConnection -Port 3268 -ComputerName $DC).TCPTestSucceeded | Should Be $True
-
                 }
             }
 

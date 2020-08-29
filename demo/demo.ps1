@@ -3,13 +3,30 @@
 
 return "This is a walk-through demo file"
 
+# https://github.com/jdhitsolutions/ADTop10Tasks
+
+#set my demo location
+cd P:\ADTop10\demo
+
+#make sure the ISE is zoomed for the demo
+$psise.Options.Zoom = 175
+
+Clear-Host
+
 #add RSAT Active Directory
-Add-WindowsCapability -name rsat.ActiveDirectory* -online
+# Add-WindowsCapability -name rsat.ActiveDirectory* -online
+Get-WindowsCapability -name rsat.ActiveDirectory* -online
 Import-Module ActiveDirectory
 Get-Command -module ActiveDirectory
+
 #READ THE HELP!!!
 
 #region FSMO
+
+Get-ADDomain
+
+Get-ADForest
+
 Function Get-FSMOHolders {
    [cmdletbinding()]
    Param([string]$Domain = (Get-ADDomain).DistinguishedName)
@@ -27,11 +44,14 @@ Function Get-FSMOHolders {
    }
 } #end Get-FSMOHolders
 
+Get-FSMOHolders
+
 #endregion
 
 #region Empty OU
 
 #use the AD PSDrive
+Get-PSDrive AD
 Get-ChildItem 'AD:\DC=Company,DC=Pri'
 
 Get-ADOrganizationalUnit -Filter * |
@@ -72,20 +92,27 @@ New-ADUser @params
 
 #import
 
+#the column headings match parameter New-ADUser parameter names
 Import-Csv .\100NewUsers.csv | Select-Object -first 1
+
 $secure = ConvertTo-SecureString -String "P@ssw0rdXyZ" -AsPlainText -Force
 
 #I'm not taking error handling for duplicate names into account
 $newParams = @{
-   changePasswordAtLogon = $True
-   path                  = "OU=Imported,OU=Employees,DC=company,DC=pri"
-   accountpassword       = $secure
+   ChangePasswordAtLogon = $True
+   Path                  = "OU=Imported,OU=Employees,DC=company,DC=pri"
+   AccountPassword       = $secure
    Enabled               = $True
    PassThru              = $True
 }
-Import-Csv .\100NewUsers.csv | New-ADUser @newParams
 
-# Get-Aduser -Filter * -SearchBase $newParams.path | Remove-ADUser -confirm:$false
+Import-Csv .\100NewUsers.csv |
+New-ADUser @newParams 
+
+<#
+Get-Aduser -Filter * -SearchBase $newParams.path |
+Remove-ADUser -confirm:$false
+#>
 
 #endregion
 
@@ -100,7 +127,8 @@ $paramHash = @{
    ResultSetSize   = "10"
 }
 
-Search-ADAccount @paramHash | Select-Object Name, LastLogonDate, SamAccountName, DistinguishedName
+Search-ADAccount @paramHash |
+Select-Object Name, LastLogonDate, SamAccountName, DistinguishedName
 
 #endregion
 
@@ -136,11 +164,13 @@ $paramHash = @{
    SearchBase = "DC=company,DC=pri"
 }
 
-Get-ADGroup @paramhash | Where-Object {$_.DistinguishedName -notmatch "CN=(Users)|(BuiltIn)"} |
+Get-ADGroup @paramhash |
+Where-Object {$_.DistinguishedName -notmatch "CN=(Users)|(BuiltIn)"} |
 Select-Object DistinguishedName, Name, Modified, ManagedBy
 
 <#
-This is kinda the opposite. These are groups with any type of member
+This is kinda the opposite. These are groups with any type of member.
+The example is including builtin and default groups.
 #>
 $data = Get-ADGroup -filter * -Properties Members, Created, Modified |
 Select-Object Name, Description,
@@ -149,7 +179,23 @@ Group*, Created, Modified,
 @{Name = "MemberCount"; Expression = {$_.Members.count}} |
 Sort-Object MemberCount -Descending
 
-$data | Group-Object MemberCount
+#I renamed properties from Group-Object to make the result easier to understand
+$data | Group-Object MemberCount -NoElement | 
+Select-Object -property @{Name="TotalNumberOfGroups";Expression={$_.count}},
+@{Name="TotalNumberofGroupMembers";Expression={$_.Name}}
+
+<#
+TotalNumberOfGroups TotalNumberofGroupMembers
+------------------- -------------------------
+                  1 8                        
+                  1 6                        
+                  1 5                        
+                  2 4                        
+                  6 3                        
+                  3 2                        
+                  9 1                        
+                 40 0       
+#>
 
 #endregion
 
@@ -158,10 +204,13 @@ $data | Group-Object MemberCount
 #show nested groups
 psedit .\get-adnested.ps1
 
-$group = "Master Dev"
-Get-ADNested $group | Select-Object Name, Level, ParentGroup, @{Name = "Top"; Expression = {$group}}
+. .\get-adnested.ps1
 
-#list allmembers
+$group = "Master Dev"
+Get-ADNested $group |
+Select-Object Name, Level, ParentGroup, @{Name = "Top"; Expression = {$group}}
+
+#list all group members recursively
 Get-ADGroupMember -Identity $group -Recursive |
 Select-Object Distinguishedname, samAccountName
 
@@ -184,6 +233,7 @@ $roy | Get-ADMemberOf -verbose | Select-Object Name, DistinguishedName -Unique
 
 #region Password Age Report
 
+#parameters for Get-ADUser
 $params = @{
    filter     = "Enabled -eq 'true'"
    Properties = "PasswordLastSet", "PasswordNeverExpires"
@@ -193,7 +243,7 @@ $params = @{
 #This doesn't take fine tuned password policies into account
 $maxDays = (Get-ADDefaultDomainPasswordPolicy).MaxPasswordAge.Days
 
-#skip user accounts under CN=Users
+#skip user accounts under CN=Users and those with unexpired passwords
 Get-ADUser @params |
 Where-Object {-Not $_.PasswordExpired -and $_.DistinguishedName -notmatch "CN\=Users"} |
 Select-Object DistinguishedName, Name, PasswordLastSet, PasswordNeverExpires,
@@ -204,11 +254,24 @@ Sort-Object PasswordAge -Descending
 #create an html report
 psedit .\PasswordReport.ps1
 
-Invoke-Item .\PasswordReport.htm
+Invoke-Item .\PasswordReport.html
+
+#get an OU
+$params = @{
+SearchBase = "OU=Employees,DC=company,dc=pri"
+FilePath = ".\employees.html"
+ReportTitle = "Staff Password Report"
+Server = "SRV4"
+Verbose = $True
+}
+
+.\PasswordReport.ps1 @params | invoke-Item
 
 #endregion
 
 #region Domain Controller Health
+
+Clear-Host
 
 $dcs = (Get-ADDomain).ReplicaDirectoryServers
 
@@ -217,8 +280,12 @@ $dcs = (Get-ADDomain).ReplicaDirectoryServers
 # the legacy way
 # Get-Service adws,dns,ntds,kdc -ComputerName $dcs | Select-Object Machinename,Name,Status
 
-Get-CimInstance -ClassName Win32_Service -filter "name='adws' or name='dns' or name='ntds' or name='kdc'" -ComputerName $dcs |
-Select-Object SystemName, Name, State
+$cim = @{
+ ClassName = "Win32_Service"
+ filter = "name='adws' or name='dns' or name='ntds' or name='kdc'"
+ ComputerName = $dcs
+}
+Get-CimInstance @cim | Select-Object SystemName, Name, State
 
 #eventlog
 Get-EventLog -list -computername DOM1
@@ -241,10 +308,18 @@ Get-EventLog -LogName 'Active Directory Web Services' -Newest 10
 $data | Sort-Object PSComputername, TimeGenerated -Descending |
 Format-Table -GroupBy PSComputername -Property TimeGenerated, EventID, Message -wrap
 
-#how about a Pester-base health test?
+#how about a Pester-based health test?
 
 psedit .\ADHealth.tests.ps1
 
+Clear-Host
+
+#make sure I'm using v4.10 of Pester. My test is not compatible with Pester 5.0
+Get-Module Pester | Remove-Module
+Import-Module Pester -RequiredVersion 4.10.1 -force
+
 Invoke-Pester .\ADHealth.tests.ps1
+
+#You could automate running the test and taking action on failures
 
 #endregion

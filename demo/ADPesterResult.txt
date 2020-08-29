@@ -1,0 +1,73 @@
+﻿PS P:\ADTop10\demo> Invoke-Pester .\ADHealth.tests.ps1
+Pester v4.10.1
+Executing all tests in '.\ADHealth.tests.ps1'
+
+Executing script .\ADHealth.tests.ps1
+[08/29/2020 11:11:47] Testing DC=Company,DC=Pri
+
+  Describing Active-Directory
+
+    Context Domain
+      [+] Domain Admins should have 3 members 45ms
+      [+] Enterprise Admins should have 1 member 54ms
+      [+] The Administrator account should be enabled 27ms
+      [+] The PDC emulator should be DOM1.Company.Pri 46ms
+      [+] The default Users container should be CN=Users,DC=Company,DC=Pri 3ms
+
+    Context Forest
+      [+] The AD Forest functional level should be Window Server 2016 2ms
+      [+] Should only have 1 site 2ms
+
+  Describing DOM1.Company.Pri
+
+    Context Network
+      [+] Should respond to a ping 1.04s
+      [+] Port 53 should be open 356ms
+      [+] Port 389 should be open 88ms
+      [+] Port 445 should be open 113ms
+      [+] Port 5985 should be open 73ms
+      [+] Port 9389 should be open 110ms
+      [+] Should be a global catalog server 74ms
+      [+] should resolve the domain name COMPANY.PRI 8ms
+
+    Context Services
+      [+] ADWS service should be running 155ms
+      [+] DNS service should be running 136ms
+      [+] Netlogon service should be running 154ms
+      [+] KDC service should be running 139ms
+
+    Context Disk
+      [+] Should have at least 20% free space on C: 4ms
+      [+] Should have at least 10% free space in Security log 4ms
+
+    Context Shares
+      [+] Should have a share called Netlogon 13ms
+      [+] Should have a share called sysvol 8ms
+      [+] Should have a CertEnroll share 7ms
+
+  Describing SRV4.Company.Pri
+
+    Context Network
+      [+] Should respond to a ping 1.04s
+      [+] Port 53 should be open 68ms
+      [+] Port 389 should be open 102ms
+      [+] Port 445 should be open 65ms
+      [+] Port 5985 should be open 74ms
+      [+] Port 9389 should be open 67ms
+      [+] Should be a global catalog server 81ms
+      [+] should resolve the domain name COMPANY.PRI 28ms
+
+    Context Services
+      [+] ADWS service should be running 169ms
+      [+] DNS service should be running 159ms
+      [+] Netlogon service should be running 150ms
+      [+] KDC service should be running 159ms
+
+    Context Disk
+      [+] Should have at least 20% free space on C: 2ms
+      [+] Should have at least 10% free space in Security log 3ms
+
+    Context Shares
+      [+] Should have a share called Netlogon 15ms
+      [+] Should have a share called sysvol 7ms
+Tests completed in 8.83s Tests Passed: 40,Failed: 0,Skipped: 0,Pending: 0,Inconclusive: 0

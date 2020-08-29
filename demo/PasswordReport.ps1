@@ -5,11 +5,12 @@
 
 [cmdletbinding()]
 Param(
+    [Parameter(HelpMessage = "Specify the distinguished name of container like OU=Employees,DC=Company,DC=pri. The default is the entire domain.")]
     [string]$SearchBase,
     [ValidateNotNullorEmpty()]
     [string]$ReportTitle = "Password Age Report",
     [ValidateNotNullorEmpty()]
-    [string]$FilePath = "PasswordReport.htm",
+    [string]$FilePath = "PasswordReport.html",
     [PSCredential]$Credential,
     [alias("dc")]
     [string]$Server
@@ -23,7 +24,7 @@ $UserParams = @{
     Properties = "PasswordLastSet", "PasswordNeverExpires"
 }
 
-#this could be set from a parameter value
+#this could be set from a parameter value, or derived using Get-ADDomain
 $pwParams = @{
     identity = "company.pri"
 }
@@ -46,7 +47,7 @@ if ($Credential) {
 
 Write-Verbose "Getting max password age"
 #get maximum password age.
-#This doesn't take fine tuned password policies into account
+#This doesn't take fine-tuned password policies into account
 $maxDays = (Get-ADDefaultDomainPasswordPolicy @pwParams -OutVariable ad).MaxPasswordAge.Days
 
 Write-Verbose "...$maxdays"
@@ -64,7 +65,6 @@ Sort-Object PasswordAge -Descending | ConvertTo-Html -Fragment
 Write-Verbose "Processing data"
 for ($i = 1; $i -lt $html.table.tr.count; $i++) {
     if ($html.table.tr[$i].td[3] -eq "True") {
-        #$class = $html.CreateAttribute("class")
         $html.table.tr[$i].ChildNodes[3].SetAttribute("class", "alert")
     }
 }
@@ -131,3 +131,4 @@ ConvertTo-Html @convert | Out-File -filepath $FilePath -Encoding utf8
 
 Get-Item -Path $filepath
 
+Write-Verbose "Finished $($myinvocation.MyCommand)"
