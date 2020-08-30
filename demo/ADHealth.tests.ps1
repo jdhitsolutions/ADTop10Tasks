@@ -2,7 +2,6 @@
 #requires -Module ActiveDirectory, DNSClient,NetTCPIP
 
 <#
-
 Use Pester to test Active Directory
 
 This test has not been validated to work with Pester 5.x.

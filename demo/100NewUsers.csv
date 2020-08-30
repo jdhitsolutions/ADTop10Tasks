@@ -1,4 +1,4 @@
-"samaccountname","Description","OfficePhone","Surname","userprincipalname","Givenname","Name","Company","City","Department","DisplayName"
+"SamAccountName","Description","OfficePhone","Surname","UserPrincipalName","GivenName","Name","Company","City","Department","DisplayName"
 "TEikmeier","Spiceworld Demo","1001","Eikmeier","TEikmeier@company.pri","Tyree","Tyree Eikmeier","Company.com","Chicago","Development","Tyree Eikmeier"
 "MStovall","Spiceworld Demo","1002","Stovall","MStovall@company.pri","Myles","Myles Stovall","Company.com","Chicago","Product Development","Myles Stovall"
 "SDearring","Spiceworld Demo","1003","Dearring","SDearring@company.pri","Shelby","Shelby Dearring","Company.com","Miami","Product Development","Shelby Dearring"

@@ -5,11 +5,6 @@ return "This is a walk-through demo file"
 
 # https://github.com/jdhitsolutions/ADTop10Tasks
 
-#set my demo location
-cd P:\ADTop10\demo
-
-#make sure the ISE is zoomed for the demo
-$psise.Options.Zoom = 175
 
 Clear-Host
 
@@ -55,14 +50,14 @@ Get-PSDrive AD
 Get-ChildItem 'AD:\DC=Company,DC=Pri'
 
 Get-ADOrganizationalUnit -Filter * |
-ForEach-Object {
-   $ouPath = Join-Path -path "AD:\" -ChildPath $_.distinguishedName
-   $test = Get-ChildItem -path $ouPath -Recurse |
-   Where-Object ObjectClass -ne 'organizationalunit'
-   if (-Not $Test) {
-      $_.distinguishedname
+   ForEach-Object {
+      $ouPath = Join-Path -path "AD:\" -ChildPath $_.distinguishedName
+      $test = Get-ChildItem -path $ouPath -Recurse |
+         Where-Object ObjectClass -ne 'organizationalunit'
+      if (-Not $Test) {
+         $_.distinguishedname
+      }
    }
-}
 
 #endregion
 
@@ -106,8 +101,7 @@ $newParams = @{
    PassThru              = $True
 }
 
-Import-Csv .\100NewUsers.csv |
-New-ADUser @newParams 
+Import-Csv .\100NewUsers.csv | New-ADUser @newParams
 
 <#
 Get-Aduser -Filter * -SearchBase $newParams.path |
@@ -127,8 +121,7 @@ $paramHash = @{
    ResultSetSize   = "10"
 }
 
-Search-ADAccount @paramHash |
-Select-Object Name, LastLogonDate, SamAccountName, DistinguishedName
+Search-ADAccount @paramHash | Select-Object Name, LastLogonDate, SamAccountName, DistinguishedName
 
 #endregion
 
@@ -150,11 +143,11 @@ $paramHash = @{
 }
 
 Get-ADGroup @paramHash |
-Select-Object Name, Description,
-@{Name = "Location"; Expression = {$_.DistinguishedName.split(",", 2)[1]}},
-Group*, Modified, ManagedBy |
-Sort-Object Location |
-Format-Table -GroupBy Location -Property Name, Description, Group*, Modified, ManagedBy
+   Select-Object Name, Description,
+   @{Name = "Location"; Expression = { $_.DistinguishedName.split(",", 2)[1] } },
+   Group*, Modified, ManagedBy |
+   Sort-Object Location |
+   Format-Table -GroupBy Location -Property Name, Description, Group*, Modified, ManagedBy
 
 #filter out User and Builtin
 #can't seem to filter on DistinguishedName
@@ -165,36 +158,36 @@ $paramHash = @{
 }
 
 Get-ADGroup @paramhash |
-Where-Object {$_.DistinguishedName -notmatch "CN=(Users)|(BuiltIn)"} |
+Where-Object { $_.DistinguishedName -notmatch "CN=(Users)|(BuiltIn)" } |
 Select-Object DistinguishedName, Name, Modified, ManagedBy
 
 <#
-This is kinda the opposite. These are groups with any type of member.
+This is the opposite. These are groups with any type of member.
 The example is including builtin and default groups.
 #>
 $data = Get-ADGroup -filter * -Properties Members, Created, Modified |
-Select-Object Name, Description,
-@{Name = "Location"; Expression = {$_.DistinguishedName.split(",", 2)[1]}},
-Group*, Created, Modified,
-@{Name = "MemberCount"; Expression = {$_.Members.count}} |
-Sort-Object MemberCount -Descending
+   Select-Object Name, Description,
+   @{Name = "Location"; Expression = { $_.DistinguishedName.split(",", 2)[1] } },
+   Group*, Created, Modified,
+   @{Name = "MemberCount"; Expression = { $_.Members.count } } |
+   Sort-Object MemberCount -Descending
 
 #I renamed properties from Group-Object to make the result easier to understand
-$data | Group-Object MemberCount -NoElement | 
-Select-Object -property @{Name="TotalNumberOfGroups";Expression={$_.count}},
-@{Name="TotalNumberofGroupMembers";Expression={$_.Name}}
+$data | Group-Object MemberCount -NoElement |
+Select-Object -property @{Name = "TotalNumberOfGroups"; Expression = { $_.count } },
+@{Name = "TotalNumberofGroupMembers"; Expression = { $_.Name } }
 
 <#
 TotalNumberOfGroups TotalNumberofGroupMembers
 ------------------- -------------------------
-                  1 8                        
-                  1 6                        
-                  1 5                        
-                  2 4                        
-                  6 3                        
-                  3 2                        
-                  9 1                        
-                 40 0       
+                  1 8
+                  1 6
+                  1 5
+                  2 4
+                  6 3
+                  3 2
+                  9 1
+                 40 0
 #>
 
 #endregion
@@ -202,17 +195,15 @@ TotalNumberOfGroups TotalNumberofGroupMembers
 #region Enumerate Nested Group Membership
 
 #show nested groups
-psedit .\get-adnested.ps1
+psedit .\Get-ADNested.ps1
 
-. .\get-adnested.ps1
+. .\Get-ADNested.ps1
 
 $group = "Master Dev"
-Get-ADNested $group |
-Select-Object Name, Level, ParentGroup, @{Name = "Top"; Expression = {$group}}
+Get-ADNested $group | Select-Object Name, Level, ParentGroup, @{Name = "Top"; Expression = { $group } }
 
 #list all group members recursively
-Get-ADGroupMember -Identity $group -Recursive |
-Select-Object Distinguishedname, samAccountName
+Get-ADGroupMember -Identity $group -Recursive | Select-Object Distinguishedname, samAccountName
 
 #endregion
 
@@ -245,10 +236,10 @@ $maxDays = (Get-ADDefaultDomainPasswordPolicy).MaxPasswordAge.Days
 
 #skip user accounts under CN=Users and those with unexpired passwords
 Get-ADUser @params |
-Where-Object {-Not $_.PasswordExpired -and $_.DistinguishedName -notmatch "CN\=Users"} |
+Where-Object { -Not $_.PasswordExpired -and $_.DistinguishedName -notmatch "CN\=Users" } |
 Select-Object DistinguishedName, Name, PasswordLastSet, PasswordNeverExpires,
-@{Name = "PasswordAge"; Expression = {(Get-Date) - $_.PasswordLastSet}},
-@{Name = "PassExpires"; Expression = {$_.passwordLastSet.addDays($maxDays)}} |
+@{Name = "PasswordAge"; Expression = { (Get-Date) - $_.PasswordLastSet } },
+@{Name = "PassExpires"; Expression = { $_.passwordLastSet.addDays($maxDays) } } |
 Sort-Object PasswordAge -Descending
 
 #create an html report
@@ -258,14 +249,14 @@ Invoke-Item .\PasswordReport.html
 
 #get an OU
 $params = @{
-SearchBase = "OU=Employees,DC=company,dc=pri"
-FilePath = ".\employees.html"
-ReportTitle = "Staff Password Report"
-Server = "SRV4"
-Verbose = $True
+   SearchBase  = "OU=Employees,DC=company,dc=pri"
+   FilePath    = ".\employees.html"
+   ReportTitle = "Staff Password Report"
+   Server      = "SRV4"
+   Verbose     = $True
 }
 
-.\PasswordReport.ps1 @params | invoke-Item
+.\PasswordReport.ps1 @params | Invoke-Item
 
 #endregion
 
@@ -281,9 +272,9 @@ $dcs = (Get-ADDomain).ReplicaDirectoryServers
 # Get-Service adws,dns,ntds,kdc -ComputerName $dcs | Select-Object Machinename,Name,Status
 
 $cim = @{
- ClassName = "Win32_Service"
- filter = "name='adws' or name='dns' or name='ntds' or name='kdc'"
- ComputerName = $dcs
+   ClassName    = "Win32_Service"
+   filter       = "name='adws' or name='dns' or name='ntds' or name='kdc'"
+   ComputerName = $dcs
 }
 Get-CimInstance @cim | Select-Object SystemName, Name, State
 
@@ -314,7 +305,7 @@ psedit .\ADHealth.tests.ps1
 
 Clear-Host
 
-#make sure I'm using v4.10 of Pester. My test is not compatible with Pester 5.0
+#make sure I'm using v4.10 of Pester. My test is not compatible with Pester 5.0.
 Get-Module Pester | Remove-Module
 Import-Module Pester -RequiredVersion 4.10.1 -force
 
